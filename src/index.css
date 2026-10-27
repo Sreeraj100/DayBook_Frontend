@@ -1,0 +1,476 @@
+@import 'tailwindcss';
+
+:root {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body { margin: 0; min-width: 320px; min-height: 100vh; }
+* { box-sizing: border-box; }
+
+@layer components {
+  .field-input { @apply block h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-normal text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-teal-700/60 focus:ring-4 focus:ring-teal-700/5; }
+}
+
+.todo-editor { scrollbar-width: none; -ms-overflow-style: none; }
+.todo-editor::-webkit-scrollbar { display: none; }
+.todo-editor-form { scrollbar-width: none; -ms-overflow-style: none; overscroll-behavior: contain; }
+.todo-editor-form::-webkit-scrollbar { display: none; }
+.app-dialog-backdrop { position: fixed; z-index: 100; inset: 0; display: grid; place-items: center; overflow-y: auto; padding: 18px; background: rgb(15 23 42 / 42%); backdrop-filter: blur(5px); animation: app-dialog-fade .16s ease-out; }
+.app-dialog { position: relative; width: min(440px,100%); border: 1px solid rgb(255 255 255 / 75%); border-radius: 24px; background: linear-gradient(145deg,rgb(255 255 255 / 98%),rgb(247 250 248 / 96%)); padding: 28px; box-shadow: 0 28px 90px rgb(15 23 42 / 24%); animation: app-dialog-enter .2s cubic-bezier(.2,.8,.2,1); }
+.app-dialog-close { position: absolute; top: 14px; right: 14px; display: grid; width: 34px; height: 34px; place-items: center; border-radius: 11px; color: #64748b; transition: background .15s,color .15s; }.app-dialog-close:hover { background: #eef2f0; color: #1e293b; }
+.app-dialog-icon { display: grid; width: 48px; height: 48px; place-items: center; border: 1px solid #cde6d9; border-radius: 16px; background: linear-gradient(145deg,#eaf7ef,#d9efe4); color: #1d6a4d; box-shadow: inset 0 1px 0 #fff; }.app-dialog-icon-danger { border-color: #fecaca; background: linear-gradient(145deg,#fff1f2,#ffe4e6); color: #be123c; }
+.app-dialog-input { display: block; width: 100%; min-height: 44px; margin-top: 18px; border: 1px solid #dbe4de; border-radius: 12px; background: white; padding: 10px 13px; color: #1f2937; outline: none; transition: border-color .15s,box-shadow .15s; }.app-dialog-input:focus { border-color: #4d8b72; box-shadow: 0 0 0 4px rgb(45 126 90 / 12%); }
+.app-dialog-primary,.app-dialog-secondary { display: inline-flex; min-height: 42px; align-items: center; justify-content: center; border-radius: 12px; padding: 9px 16px; font-size: 13px; font-weight: 650; transition: background .15s,transform .15s; }.app-dialog-primary { background: #174b3b; color: white; box-shadow: 0 5px 14px rgb(23 75 59 / 18%); }.app-dialog-primary:hover { transform: translateY(-1px); background: #20634c; }.app-dialog-primary-danger { background: #be123c; box-shadow: 0 5px 14px rgb(190 18 60 / 16%); }.app-dialog-primary-danger:hover { background: #9f1239; }.app-dialog-secondary { border: 1px solid #dbe4de; background: rgb(255 255 255 / 78%); color: #475569; }.app-dialog-secondary:hover { background: white; }
+@keyframes app-dialog-fade { from { opacity: 0; } to { opacity: 1; } } @keyframes app-dialog-enter { from { opacity: 0; transform: translateY(8px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@media(max-width:639px) { .app-dialog { border-radius: 21px; padding: 24px 20px 20px; } }
+
+.diary-shell { color: #433a2f; }
+.diary-book { position: relative; display: grid; grid-template-columns: minmax(250px, .72fr) 24px minmax(0, 1.45fr); min-height: min(760px, calc(100vh - 210px)); overflow: hidden; border: 1px solid #d7c8aa; border-radius: 8px; background: #f9f2e4; box-shadow: 0 22px 55px #4d3b2116, 0 4px 12px #4d3b2110; }
+.diary-archive { display: flex; flex-direction: column; padding: 26px 22px 20px; background: linear-gradient(90deg,#f9f1e1,#f8f0df 95%,#eee3ce); }
+.diary-archive-list { flex: 1; max-height: 480px; overflow: auto; scrollbar-color: #d3c3a4 transparent; scrollbar-width: thin; }
+.diary-spine { position: relative; z-index: 2; background: linear-gradient(90deg,#c9b894 0,#e5d8bf 24%,#bba884 51%,#f1e7d4 76%,#d0c09e 100%); box-shadow: 1px 0 4px #6e58321c,-1px 0 4px #6e58321c; }
+.diary-spine div { position: absolute; inset: 0 8px; border-right: 1px solid #b8a78166; border-left: 1px solid #fffaf266; }
+.diary-paper { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 650px; overflow: hidden; padding: 34px clamp(22px,5vw,68px) 23px; background-color: #fffaf0; background-image: radial-gradient(ellipse at 17% 12%,#fffef8 0,transparent 54%),radial-gradient(#7b65420c .55px,transparent .7px); background-size: auto,5px 5px; }
+.diary-paper-grain { position: absolute; inset: 0; pointer-events: none; opacity: .25; background-image: repeating-linear-gradient(0deg,transparent 0,transparent 3px,#d8c9a714 4px); }
+.diary-page-header,.diary-editor-wrap,.diary-footer { position: relative; z-index: 1; }
+.diary-page-header { padding-bottom: 18px; border-bottom: 1px solid #cfc1a6; }
+.diary-date-kicker { color: #947f5b; font: 700 10px/1 Inter,ui-sans-serif,sans-serif; letter-spacing: .18em; }
+.diary-save-state { display: inline-flex; align-items: center; gap: 5px; color: #8a7d66; font: 500 11px/1.2 Inter,ui-sans-serif,sans-serif; }
+.diary-state-saved { color: #78816b; }.diary-state-error { color: #a45a4b; }.diary-state-saving { color: #9b8258; }
+.diary-state-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.diary-date-heading { color: #40372c; font-size: clamp(20px,2.7vw,29px); line-height: 1.35; }
+.diary-icon-button { display: grid; width: 34px; height: 34px; flex: 0 0 auto; place-items: center; border: 1px solid #d8cbb2; border-radius: 50%; color: #73664f; transition: background .15s; }.diary-icon-button:hover { background: #f2e8d4; }
+.diary-editor-wrap { flex: 1; min-height: 390px; margin-top: 17px; background: repeating-linear-gradient(to bottom,transparent 0,transparent 31px,#c9d2d4 32px,#c9d2d4 33px); }
+.diary-editor-wrap:before { position: absolute; top: 0; bottom: 0; left: 36px; border-left: 1px solid #d69b8a94; content: ''; }
+.diary-writing { display: block; width: 100%; height: 100%; min-height: 390px; resize: vertical; border: 0; outline: 0; padding: 0 0 0 53px; background: transparent; color: #413b33; font-family: Georgia,'Times New Roman',serif; font-size: 18px; line-height: 33px; letter-spacing: .005em; white-space: pre-wrap; }
+.diary-writing::placeholder { color: #aa9e89; opacity: .8; }
+.diary-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding-top: 14px; }
+.diary-improve-button,.diary-apply-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 0; border-radius: 999px; background: #526450; padding: 10px 16px; color: #fffdf7; font-size: 13px; font-weight: 600; transition: background .15s,transform .15s; }.diary-improve-button:hover:not(:disabled),.diary-apply-button:hover { transform: translateY(-1px); background: #3e5140; }.diary-improve-button:disabled { cursor: not-allowed; opacity: .48; }
+.diary-load-error,.diary-loading { display: grid; flex: 1; min-height: 390px; align-content: center; justify-items: center; gap: 12px; color: #897c65; text-align: center; }.diary-load-error button { border-bottom: 1px solid currentColor; font-size: 13px; }
+.diary-modal-backdrop { position: fixed; z-index: 50; inset: 0; display: grid; place-items: center; overflow: auto; padding: 18px; background: #29261f86; }
+.diary-modal { width: min(860px,100%); max-height: min(90vh,900px); overflow: auto; border: 1px solid #d4c4a3; border-radius: 16px; background: #fffaf0; padding: clamp(20px,4vw,34px); box-shadow: 0 24px 80px #211a1350; }
+.diary-comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }.diary-comparison article { min-width: 0; overflow: auto; max-height: 42vh; border: 1px solid #e0d4bd; border-radius: 10px; background: #fffcf6; padding: 14px; }.diary-comparison h3 { margin-bottom: 10px; color: #89744f; font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }.diary-comparison pre { white-space: pre-wrap; overflow-wrap: anywhere; color: #4c4438; font: 15px/1.75 Georgia,'Times New Roman',serif; }
+.diary-cancel-button { border: 1px solid #d7c9af; border-radius: 999px; padding: 9px 15px; color: #655a48; font-size: 13px; }.diary-apply-button { padding: 10px 16px; }
+@media(max-width:767px) { .diary-book { display: block; min-height: calc(100vh - 195px); overflow: visible; border: 0; background: transparent; box-shadow: none; }.diary-archive { display: none; }.diary-archive-open { display: flex; max-height: 62vh; margin-bottom: 12px; border: 1px solid #d7c8aa; border-radius: 8px; box-shadow: 0 12px 30px #4d3b2116; }.diary-archive-list { max-height: 28vh; }.diary-spine { display: none; }.diary-paper { min-height: calc(100vh - 220px); border: 1px solid #d7c8aa; border-radius: 7px; padding: 23px 16px 17px; box-shadow: 0 14px 35px #4d3b2116; }.diary-editor-wrap { min-height: 370px; }.diary-writing { min-height: 370px; padding-left: 38px; font-size: 17px; line-height: 31px; }.diary-editor-wrap { background-size: auto 31px; }.diary-editor-wrap:before { left: 25px; }.diary-page-header { padding-bottom: 13px; }.diary-date-heading { font-size: 21px; }.diary-comparison { grid-template-columns: 1fr; }.diary-comparison article { max-height: 25vh; } }
+
+.finance-panel { min-width: 0; border: 1px solid #e5e9e6; border-radius: 18px; background: #fff; padding: 18px; box-shadow: 0 2px 8px #16282008; }
+.finance-select,.finance-input { min-height: 40px; width: 100%; border: 1px solid #dfe5e1; border-radius: 10px; background: #fff; padding: 8px 11px; color: #25352e; font-size: 14px; outline: none; transition: border-color .15s,box-shadow .15s; }
+.finance-select { width: auto; min-width: 130px; }
+.finance-select:focus,.finance-input:focus { border-color: #568b7a; box-shadow: 0 0 0 3px #568b7a1c; }
+.finance-icon { display: inline-grid; min-width: 34px; min-height: 34px; place-items: center; border-radius: 9px; color: #64736b; transition: background .15s,color .15s; }.finance-icon:hover { background: #edf3ef; color: #174d3e; }.finance-icon:disabled { opacity: .4; }
+.finance-label { display: block; min-width: 0; color: #49564f; font-size: 12px; font-weight: 600; }
+.finance-modal-backdrop { position: fixed; z-index: 60; inset: 0; display: grid; place-items: center; overflow-y: auto; padding: 16px; background: #111b1780; }
+.finance-modal-sheet { width: min(620px,100%); max-height: min(94vh,900px); overflow-y: auto; border: 1px solid #e2e8e3; border-radius: 18px; background: #fff; padding: clamp(18px,4vw,28px); box-shadow: 0 25px 80px #10271d35; }
+.finance-primary { display: inline-flex; min-height: 40px; align-items: center; justify-content: center; border: 0; border-radius: 10px; background: #123d31; padding: 9px 15px; color: white; font-size: 13px; font-weight: 650; }.finance-primary:hover:not(:disabled) { background: #205847; }.finance-primary:disabled { opacity: .55; }
+.finance-secondary { display: inline-flex; min-height: 40px; align-items: center; justify-content: center; border: 1px solid #dce3df; border-radius: 10px; background: white; padding: 9px 15px; color: #425149; font-size: 13px; font-weight: 600; }
+.finance-page-button { display: inline-flex; align-items: center; gap: 4px; border: 1px solid #e1e6e3; border-radius: 8px; background: white; padding: 6px 9px; color: #53635b; }.finance-page-button:disabled { opacity: .4; }
+@media(max-width:639px) { .finance-panel { padding: 15px; border-radius: 15px; }.finance-modal-backdrop { align-items: end; padding: 0; }.finance-modal-sheet { width: 100%; max-height: 94dvh; border-radius: 18px 18px 0 0; padding: 20px 16px calc(18px + env(safe-area-inset-bottom)); }.finance-select { min-width: 110px; } }
+
+.calendar-page { color: #18211d; }
+.calendar-card { min-width: 0; border: 1px solid #e5e9e6; border-radius: 18px; background: #fff; box-shadow: 0 2px 8px #16282008; }
+.calendar-tab { display: inline-flex; align-items: center; gap: 8px; border-bottom: 2px solid transparent; padding: 11px 13px; color: #65736c; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.calendar-tab-active { border-color: #176b58; color: #155344; }
+.calendar-primary,.calendar-secondary,.calendar-square,.calendar-danger { display: inline-flex; min-height: 38px; align-items: center; justify-content: center; gap: 7px; border-radius: 10px; padding: 8px 13px; font-size: 13px; font-weight: 600; transition: background .15s,border-color .15s; }
+.calendar-primary { border: 1px solid #154b3d; background: #154b3d; color: #fff; }.calendar-primary:hover:not(:disabled) { background: #216452; }.calendar-primary:disabled { opacity: .55; }
+.calendar-secondary { border: 1px solid #dfe5e1; background: white; color: #3e5148; }.calendar-secondary:hover { background: #f7f9f7; }
+.calendar-square { width: 36px; min-height: 36px; border: 1px solid #e4e9e5; background: white; padding: 0; color: #53645b; }.calendar-square:hover { background: #f5f8f6; }
+.calendar-danger { border: 1px solid #f2dada; background: #fff; color: #a63c3c; }.calendar-danger:hover:not(:disabled) { background: #fff5f5; }
+.calendar-day-cell { min-height: 112px; overflow: hidden; border-right: 1px solid #edf0ed; border-bottom: 1px solid #edf0ed; padding: 7px 6px; }.calendar-day-cell:nth-child(7n) { border-right: 0; }.calendar-day-outside { background: #fafbfa; }.calendar-day-outside .calendar-day-number { color: #b4bdb8; }
+.calendar-day-number { display: grid; width: 27px; height: 27px; place-items: center; border-radius: 50%; color: #45534c; font-size: 12px; font-weight: 600; }.calendar-day-number:hover { background: #eef5f1; }.calendar-day-today { background: #155344; color: white; }
+.calendar-event-pill { display: block; width: 100%; overflow: hidden; margin-top: 3px; border-radius: 5px; padding: 3px 5px; text-align: left; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; line-height: 1.35; font-weight: 600; }.calendar-holiday-pill { overflow: hidden; margin-top: 3px; border-radius: 5px; background: #dcfce7; padding: 3px 5px; color: #14532d; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; font-weight: 600; }
+.calendar-backdrop { position: fixed; z-index: 70; inset: 0; display: grid; place-items: center; overflow-y: auto; padding: 16px; background: #12201b80; }
+.calendar-dialog { width: min(620px,100%); max-height: min(94vh,900px); overflow-y: auto; border: 1px solid #e2e8e3; border-radius: 18px; background: #fff; padding: clamp(18px,4vw,27px); box-shadow: 0 25px 80px #10271d35; }
+.calendar-image-dialog { display: flex; width: min(1100px,100%); height: min(92vh,920px); min-height: 360px; flex-direction: column; overflow: hidden; border-radius: 15px; background: white; box-shadow: 0 25px 80px #10271d35; }
+.calendar-label { display: block; color: #49564f; font-size: 12px; font-weight: 600; }.calendar-input { display: block; width: 100%; min-height: 40px; margin-top: 6px; border: 1px solid #dfe5e1; border-radius: 10px; background: white; padding: 8px 11px; color: #25352e; font-size: 14px; font-weight: 400; outline: none; }.calendar-input:focus { border-color: #568b7a; box-shadow: 0 0 0 3px #568b7a1c; }
+.calendar-upload-zone { display: flex; width: 100%; min-height: 126px; flex-direction: column; align-items: center; justify-content: center; gap: 7px; border: 1px dashed #aebdb4; border-radius: 14px; background: #f8faf8; color: #315345; }.calendar-upload-zone:hover:not(:disabled) { border-color: #408270; background: #f2f8f4; }
+@media(max-width:639px) { .calendar-page { padding-top: 18px; }.calendar-card { border-radius: 15px; }.calendar-backdrop { align-items: end; padding: 0; }.calendar-dialog { width: 100%; max-height: 94dvh; border-radius: 18px 18px 0 0; padding: 20px 16px calc(18px + env(safe-area-inset-bottom)); }.calendar-image-dialog { width: 100%; height: 94dvh; border-radius: 16px 16px 0 0; }.calendar-day-cell { min-height: 92px; padding: 5px 3px; }.calendar-event-pill { padding: 3px; font-size: 9px; } }
+
+.leaves-page { color: #18211d; }
+.leave-panel { min-width: 0; border: 1px solid #e5e9e6; border-radius: 18px; background: white; box-shadow: 0 2px 8px #16282008; }
+.leave-balance-card,.leave-summary-card { min-width: 0; border: 1px solid #e5e9e6; border-radius: 16px; background: white; padding: 16px; box-shadow: 0 2px 8px #16282008; }
+.leave-summary-card { padding: 15px 16px; }
+.leave-policy-note { display: flex; gap: 10px; border: 1px solid #d8e9e0; border-radius: 16px; background: #f0f7f2; padding: 15px; color: #315345; font-size: 12px; }
+.leave-secondary,.leave-primary,.leave-icon,.leave-danger { display: inline-flex; min-height: 38px; align-items: center; justify-content: center; gap: 7px; border-radius: 10px; padding: 8px 13px; font-size: 13px; font-weight: 600; transition: background .15s,border-color .15s; }
+.leave-primary { border: 1px solid #154b3d; background: #154b3d; color: white; }.leave-primary:hover:not(:disabled) { background: #216452; }.leave-primary:disabled { opacity: .5; }
+.leave-secondary { border: 1px solid #dfe5e1; background: white; color: #3e5148; }.leave-secondary:hover:not(:disabled) { background: #f7f9f7; }
+.leave-icon { width: 36px; min-height: 36px; border: 1px solid #e4e9e5; background: white; padding: 0; color: #53645b; }.leave-icon:hover:not(:disabled) { background: #f5f8f6; }
+.leave-danger { border: 1px solid #f2dada; background: white; color: #a63c3c; }.leave-danger:hover:not(:disabled) { background: #fff5f5; }
+.leave-year-select { min-height: 36px; border: 1px solid #e4e9e5; border-radius: 9px; background: white; padding: 0 9px; color: #46574f; font-size: 12px; }
+.leave-calendar-cell { min-height: 100px; overflow: hidden; border-right: 1px solid #edf0ed; border-bottom: 1px solid #edf0ed; padding: 6px; }.leave-calendar-cell:nth-child(7n) { border-right: 0; }.leave-calendar-outside { background: #fafbfa; }.leave-calendar-outside .leave-calendar-date { color: #bac2bd; }
+.leave-calendar-date { display: grid; width: 26px; height: 26px; place-items: center; border-radius: 50%; color: #43524a; font-size: 12px; font-weight: 600; }.leave-calendar-date:hover { background: #eef5f1; }.leave-calendar-today { background: #155344; color: white; }
+.leave-event-chip,.leave-holiday-chip { display: block; width: 100%; overflow: hidden; margin-top: 3px; border-radius: 5px; padding: 3px 5px; text-align: left; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; font-weight: 600; }.leave-planned { outline: 1px dashed #3973a4; outline-offset: -1px; }.leave-holiday-chip { background: #fef3c7; color: #854d0e; }
+.leave-status { display: inline-flex; align-items: center; border-radius: 999px; padding: 4px 7px; font-size: 9px; font-weight: 700; text-transform: capitalize; }.leave-status-taken { background: #e2f2e8; color: #226443; }.leave-status-planned { background: #e7f0ff; color: #315d93; }.leave-status-cancelled { background: #f1f2f2; color: #767f7a; }
+.leave-backdrop { position: fixed; z-index: 75; inset: 0; display: grid; place-items: center; overflow-y: auto; padding: 16px; background: #12201b80; }
+.leave-dialog,.leave-settings-dialog { width: min(570px,100%); max-height: min(94vh,900px); overflow-y: auto; border: 1px solid #e2e8e3; border-radius: 18px; background: white; padding: clamp(18px,4vw,27px); box-shadow: 0 25px 80px #10271d35; }.leave-settings-dialog { width: min(990px,100%); }
+.leave-label { display: block; color: #49564f; font-size: 12px; font-weight: 600; }.leave-input { display: block; width: 100%; min-height: 40px; margin-top: 6px; border: 1px solid #dfe5e1; border-radius: 10px; background: white; padding: 8px 11px; color: #25352e; font-size: 14px; font-weight: 400; outline: none; }.leave-input:focus { border-color: #568b7a; box-shadow: 0 0 0 3px #568b7a1c; }
+@media(max-width:639px) { .leave-panel { border-radius: 15px; }.leave-backdrop { align-items: end; padding: 0; }.leave-dialog,.leave-settings-dialog { width: 100%; max-height: 94dvh; border-radius: 18px 18px 0 0; padding: 20px 16px calc(18px + env(safe-area-inset-bottom)); }.leave-calendar-cell { min-height: 84px; padding: 4px 3px; }.leave-event-chip,.leave-holiday-chip { padding: 2px 3px; font-size: 9px; } }
+
+/* App-wide theme. The diary paper stays warm by design, like a real notebook. */
+html[data-theme="dark"] { color-scheme: dark; background: #111816; }
+html[data-theme="dark"] body { background: #111816; color: #e2e8e4; }
+html[data-theme="dark"] .app-root { background: #111816 !important; color: #e2e8e4; }
+html[data-theme="dark"] .app-root > header { border-color: #29342f !important; background: rgb(23 31 28 / 94%) !important; }
+html[data-theme="dark"] .app-root header nav { background: #222d28 !important; }
+html[data-theme="dark"] .app-root header a:not([aria-label]) { color: #e2e8e4; }
+html[data-theme="dark"] .app-root header button:not(.app-dialog-primary) { border-color: #3b4942 !important; color: #b9c7bf !important; }
+html[data-theme="dark"] .app-root header nav a:hover { background: #35433c !important; }
+html[data-theme="dark"] .app-root [class*="bg-white"],
+html[data-theme="dark"] .app-root [class*="bg-[#fbfcfa"],
+html[data-theme="dark"] .app-root [class*="bg-[#f6f7f4"] { background-color: #1a2420 !important; }
+html[data-theme="dark"] .app-root [class*="text-slate-900"],
+html[data-theme="dark"] .app-root [class*="text-slate-800"],
+html[data-theme="dark"] .app-root [class*="text-[#24342e"],
+html[data-theme="dark"] .app-root [class*="text-[#1c2c25"] { color: #e4ebe6 !important; }
+html[data-theme="dark"] .app-root [class*="text-slate-700"],
+html[data-theme="dark"] .app-root [class*="text-slate-600"],
+html[data-theme="dark"] .app-root [class*="text-slate-500"] { color: #aab8b0 !important; }
+html[data-theme="dark"] .app-root [class*="border-slate-100"],
+html[data-theme="dark"] .app-root [class*="border-slate-200"],
+html[data-theme="dark"] .app-root [class*="border-[#e4e8e1"],
+html[data-theme="dark"] .app-root [class*="border-[#e5e9e6"],
+html[data-theme="dark"] .app-root [class*="border-[#e8ebe5"] { border-color: #34413a !important; }
+html[data-theme="dark"] .app-root .field-input,
+html[data-theme="dark"] .app-root .finance-input,
+html[data-theme="dark"] .app-root .finance-select,
+html[data-theme="dark"] .app-root .calendar-input,
+html[data-theme="dark"] .app-root .calendar-dialog,
+html[data-theme="dark"] .app-root .calendar-image-dialog,
+html[data-theme="dark"] .app-root .leave-input,
+html[data-theme="dark"] .app-root .leave-dialog,
+html[data-theme="dark"] .app-root .leave-settings-dialog,
+html[data-theme="dark"] .app-root .finance-modal-sheet,
+html[data-theme="dark"] .app-root .todo-editor,
+html[data-theme="dark"] .app-dialog { border-color: #34413a; background: #1a2420; color: #e4ebe6; }
+html[data-theme="dark"] .app-root .finance-panel,
+html[data-theme="dark"] .app-root .calendar-card,
+html[data-theme="dark"] .app-root .leave-panel,
+html[data-theme="dark"] .app-root .leave-balance-card,
+html[data-theme="dark"] .app-root .leave-summary-card { border-color: #303d36; background: #1a2420; }
+html[data-theme="dark"] .app-root .finance-secondary,
+html[data-theme="dark"] .app-root .finance-page-button,
+html[data-theme="dark"] .app-root .calendar-secondary,
+html[data-theme="dark"] .app-root .calendar-square,
+html[data-theme="dark"] .app-root .calendar-danger,
+html[data-theme="dark"] .app-root .leave-secondary,
+html[data-theme="dark"] .app-root .leave-icon,
+html[data-theme="dark"] .app-root .leave-danger,
+html[data-theme="dark"] .app-root .leave-year-select,
+html[data-theme="dark"] .app-dialog-secondary { border-color: #3b4942; background: #222d28; color: #d4ded8; }
+html[data-theme="dark"] .app-root .calendar-day-cell,
+html[data-theme="dark"] .app-root .leave-calendar-cell { border-color: #303d36; }
+html[data-theme="dark"] .app-root .calendar-day-outside,
+html[data-theme="dark"] .app-root .leave-calendar-outside { background: #17211d; }
+html[data-theme="dark"] .app-root .calendar-day-number,
+html[data-theme="dark"] .app-root .leave-calendar-date { color: #c4d0c9; }
+html[data-theme="dark"] .app-root .todo-editor .field-input,
+html[data-theme="dark"] .app-root .finance-input,
+html[data-theme="dark"] .app-root .finance-select,
+html[data-theme="dark"] .app-root .calendar-input,
+html[data-theme="dark"] .app-root .leave-input { color: #e4ebe6; }
+html[data-theme="dark"] .app-root select option { background: #1a2420; color: #e4ebe6; }
+html[data-theme="dark"] .app-root .diary-shell { color: #433a2f; }
+html[data-theme="dark"] .app-root .diary-paper,
+html[data-theme="dark"] .app-root .diary-archive,
+html[data-theme="dark"] .app-root .diary-modal { color: #433a2f; }
+html[data-theme="dark"] .app-root .diary-writing { color: #413b33; }
+html[data-theme="dark"] .app-root .calendar-tab { color: #aab8b0; }
+html[data-theme="dark"] .app-root .calendar-tab-active { color: #8ad0b3; }
+html[data-theme="dark"] .app-root .leave-policy-note { border-color: #315243; background: #1d342a; color: #b9d9c7; }
+html[data-theme="dark"] .app-root .app-dialog-input { border-color: #3b4942; background: #141c19; color: #e4ebe6; }
+html[data-theme="dark"] .app-root .finance-modal-backdrop,
+html[data-theme="dark"] .app-root .calendar-backdrop,
+html[data-theme="dark"] .app-root .leave-backdrop { background: #050908c9; }
+@media (prefers-reduced-motion: no-preference) {
+  .app-root, .app-root header, .app-root .finance-panel, .app-root .calendar-card, .app-root .leave-panel { transition: background-color .2s ease, color .2s ease, border-color .2s ease; }
+}
+
+/* Dark theme palette inspired by art.sreeraj.online: ink black, paper white, and a restrained red accent. */
+html[data-theme="dark"] { background: #080808; }
+html[data-theme="dark"] body,
+html[data-theme="dark"] .app-root { background: #080808 !important; color: #f1f1f1; }
+html[data-theme="dark"] .app-root > header { background: rgb(8 8 8 / 96%) !important; border-color: #252525 !important; }
+html[data-theme="dark"] .app-root header nav { background: #151515 !important; }
+html[data-theme="dark"] .app-root header nav a { color: #aaa !important; }
+html[data-theme="dark"] .app-root header nav a:hover { background: #272727 !important; color: #fff !important; }
+html[data-theme="dark"] .app-root header button { border-color: #333 !important; color: #c7c7c7 !important; }
+html[data-theme="dark"] .app-root header button:hover { background: #202020 !important; color: #fff !important; }
+html[data-theme="dark"] .app-root header > div > a > span:first-child { background: #202020 !important; }
+html[data-theme="dark"] .app-root header > div > a > span:last-child span { color: #c74d55 !important; }
+html[data-theme="dark"] .app-root [class*="bg-white"],
+html[data-theme="dark"] .app-root [class*="bg-[#fbfcfa"],
+html[data-theme="dark"] .app-root [class*="bg-[#f6f7f4"],
+html[data-theme="dark"] .app-root .finance-panel,
+html[data-theme="dark"] .app-root .calendar-card,
+html[data-theme="dark"] .app-root .leave-panel,
+html[data-theme="dark"] .app-root .leave-balance-card,
+html[data-theme="dark"] .app-root .leave-summary-card { background-color: #111 !important; }
+html[data-theme="dark"] .app-root [class*="border-slate-100"],
+html[data-theme="dark"] .app-root [class*="border-slate-200"],
+html[data-theme="dark"] .app-root [class*="border-[#e4e8e1"],
+html[data-theme="dark"] .app-root [class*="border-[#e5e9e6"],
+html[data-theme="dark"] .app-root [class*="border-[#e8ebe5"],
+html[data-theme="dark"] .app-root .finance-panel,
+html[data-theme="dark"] .app-root .calendar-card,
+html[data-theme="dark"] .app-root .leave-panel,
+html[data-theme="dark"] .app-root .leave-balance-card,
+html[data-theme="dark"] .app-root .leave-summary-card { border-color: #292929 !important; }
+html[data-theme="dark"] .app-root [class*="text-slate-900"],
+html[data-theme="dark"] .app-root [class*="text-slate-800"],
+html[data-theme="dark"] .app-root [class*="text-[#24342e"],
+html[data-theme="dark"] .app-root [class*="text-[#1c2c25"] { color: #f0f0f0 !important; }
+html[data-theme="dark"] .app-root [class*="text-slate-700"],
+html[data-theme="dark"] .app-root [class*="text-slate-600"],
+html[data-theme="dark"] .app-root [class*="text-slate-500"],
+html[data-theme="dark"] .app-root [class*="text-slate-400"] { color: #a0a0a0 !important; }
+html[data-theme="dark"] .app-root [class*="text-teal-700"],
+html[data-theme="dark"] .app-root [class*="text-teal-800"],
+html[data-theme="dark"] .app-root [class*="text-teal-900"],
+html[data-theme="dark"] .app-root .calendar-tab-active { color: #cf6066 !important; }
+html[data-theme="dark"] .app-root [class*="bg-[#163c36"],
+html[data-theme="dark"] .app-root [class*="bg-[#215247"],
+html[data-theme="dark"] .app-root .finance-primary,
+html[data-theme="dark"] .app-root .calendar-primary,
+html[data-theme="dark"] .app-root .leave-primary { background: #aa353d !important; border-color: #aa353d !important; color: #fff !important; }
+html[data-theme="dark"] .app-root [class*="bg-[#163c36"]:hover,
+html[data-theme="dark"] .app-root .finance-primary:hover:not(:disabled),
+html[data-theme="dark"] .app-root .calendar-primary:hover:not(:disabled),
+html[data-theme="dark"] .app-root .leave-primary:hover:not(:disabled) { background: #c14850 !important; }
+html[data-theme="dark"] .app-root .todo-editor,
+html[data-theme="dark"] .app-root .field-input,
+html[data-theme="dark"] .app-root .finance-modal-sheet,
+html[data-theme="dark"] .app-root .finance-input,
+html[data-theme="dark"] .app-root .finance-select,
+html[data-theme="dark"] .app-root .calendar-dialog,
+html[data-theme="dark"] .app-root .calendar-image-dialog,
+html[data-theme="dark"] .app-root .calendar-input,
+html[data-theme="dark"] .app-root .leave-dialog,
+html[data-theme="dark"] .app-root .leave-settings-dialog,
+html[data-theme="dark"] .app-root .leave-input { background: #151515 !important; border-color: #333 !important; color: #eee !important; }
+html[data-theme="dark"] .app-root .finance-secondary,
+html[data-theme="dark"] .app-root .finance-page-button,
+html[data-theme="dark"] .app-root .calendar-secondary,
+html[data-theme="dark"] .app-root .calendar-square,
+html[data-theme="dark"] .app-root .calendar-danger,
+html[data-theme="dark"] .app-root .leave-secondary,
+html[data-theme="dark"] .app-root .leave-icon,
+html[data-theme="dark"] .app-root .leave-danger,
+html[data-theme="dark"] .app-root .leave-year-select { background: #191919 !important; border-color: #333 !important; color: #ddd !important; }
+html[data-theme="dark"] .app-root .calendar-day-cell,
+html[data-theme="dark"] .app-root .leave-calendar-cell { border-color: #292929 !important; }
+html[data-theme="dark"] .app-root .calendar-day-outside,
+html[data-theme="dark"] .app-root .leave-calendar-outside { background: #0d0d0d !important; }
+html[data-theme="dark"] .app-root .calendar-day-number,
+html[data-theme="dark"] .app-root .leave-calendar-date { color: #ccc; }
+html[data-theme="dark"] .app-root .calendar-day-today,
+html[data-theme="dark"] .app-root .leave-calendar-today { background: #aa353d !important; color: white !important; }
+html[data-theme="dark"] .app-root .todo-editor .field-input,
+html[data-theme="dark"] .app-root .app-dialog-input { background: #0b0b0b !important; border-color: #333 !important; color: #eee !important; }
+html[data-theme="dark"] .app-dialog { background: #151515 !important; border-color: #333 !important; color: #f0f0f0 !important; }
+html[data-theme="dark"] .app-dialog-close { color: #aaa !important; }
+html[data-theme="dark"] .app-dialog-secondary { background: #202020 !important; border-color: #383838 !important; color: #ddd !important; }
+html[data-theme="dark"] .app-root .diary-paper,
+html[data-theme="dark"] .app-root .diary-archive,
+html[data-theme="dark"] .app-root .diary-modal { color: #433a2f !important; }
+html[data-theme="dark"] .app-root .diary-writing { color: #413b33 !important; }
+html[data-theme="dark"] .app-root [class*="text-[#182723"],
+html[data-theme="dark"] .app-root [class*="text-[#1c5a4d"] { color: #f0f0f0 !important; }
+html[data-theme="dark"] .app-root [class*="bg-[#e9f3ef"] { background: #211719 !important; }
+html[data-theme="dark"] .app-root [class*="bg-[#fbfcfa"] { background: #0c0c0c !important; }
+html[data-theme="dark"] .app-root [class*="border-[#e6e9e2"] { border-color: #292929 !important; }
+html[data-theme="dark"] .app-root > header > div:nth-child(2) { background: #151515 !important; color: #aaa !important; }
+html[data-theme="dark"] .todo-page aside { border-color: #282828 !important; }
+html[data-theme="dark"] .todo-page aside > nav button[class*="bg-[#e7f0eb"] { background: #211719 !important; color: #e9a0a4 !important; }
+html[data-theme="dark"] .todo-page aside > nav button[class*="bg-[#e7f0eb"] svg { color: #d76a71 !important; }
+html[data-theme="dark"] .todo-page aside > div { background: #151515 !important; }
+html[data-theme="dark"] .todo-page aside > div [class*="text-[#294c40"],
+html[data-theme="dark"] .todo-page aside > div [class*="text-[#587166"] { color: #aaa !important; }
+html[data-theme="dark"] .todo-page [class*="text-[#225b4e"],
+html[data-theme="dark"] .todo-page [class*="text-[#2a6657"] { color: #c8a0a2 !important; }
+html[data-theme="dark"] .todo-page h1,
+html[data-theme="dark"] .todo-page [class*="text-[#1a2823"],
+html[data-theme="dark"] .todo-page [class*="text-[#23332c"] { color: #f0f0f0 !important; }
+html[data-theme="dark"] .todo-page form { border-color: #2a2a2a !important; background-color: #111 !important; }
+html[data-theme="dark"] .todo-page form button[aria-label="Add task"] { background: #252525 !important; color: #eee !important; }
+html[data-theme="dark"] .todo-page [class*="bg-[#eef4ef"],
+html[data-theme="dark"] .todo-page [class*="bg-[#e9f1eb"] { background: #1b1b1b !important; }
+html[data-theme="dark"] .todo-page article[class*="from-rose-50"] { border-color: #4b292c !important; background: linear-gradient(100deg,#251719,#151313) !important; }
+html[data-theme="dark"] .todo-page article[class*="from-amber-50"] { border-color: #493923 !important; background: linear-gradient(100deg,#241f16,#151412) !important; }
+html[data-theme="dark"] .todo-page article [class*="bg-rose-50"],
+html[data-theme="dark"] .todo-page article [class*="bg-amber-50"] { background-color: #28211b !important; }
+html[data-theme="dark"] .todo-page article [class*="text-rose-700"] { color: #f0a0a5 !important; }
+html[data-theme="dark"] .todo-page article [class*="text-amber-700"] { color: #eac27c !important; }
+html[data-theme="dark"] .todo-page article [class*="border-slate-200"] { border-color: #353535 !important; }
+html[data-theme="dark"] .todo-editor-header { border-color: #292929 !important; }
+html[data-theme="dark"] .todo-editor-footer { border-color: #292929 !important; background: rgb(17 17 17 / 96%) !important; }
+html[data-theme="dark"] .todo-editor-form [class*="border-[#e7ebe5"] { border-color: #303030 !important; }
+html[data-theme="dark"] .todo-editor-form [class*="bg-[#fbfcfa"] { background: #111 !important; }
+html[data-theme="dark"] .todo-editor-form [class*="text-[#2b4037"] { color: #e4e4e4 !important; }
+html[data-theme="dark"] .todo-editor-form button[class*="bg-[#215b4e"] { background: #aa353d !important; }
+
+/* Calendar grid follows the Sunday-first paper calendar in both themes. */
+.calendar-month-grid .calendar-weekdays,
+.leave-weekdays { background: #f4f0e6; }
+.calendar-card > div:first-child,
+.leave-panel > div:first-child { background: #f8f5ed; }
+.calendar-card > div:first-child h2,
+.leave-panel > div:first-child h2 { font-family: Georgia, 'Times New Roman', serif; letter-spacing: -.02em; }
+.calendar-month-grid .calendar-day-cell,
+.leave-panel .leave-calendar-cell { min-height: 108px; border-color: #e6e1d5; background-color: #fffefa; padding: 7px 8px; }
+.calendar-month-grid .calendar-day-number,
+.leave-panel .leave-calendar-date { width: 34px; height: 32px; justify-content: start; border-radius: 7px; font-family: Georgia, 'Times New Roman', serif; font-size: 20px; font-weight: 700; }
+.calendar-month-grid .calendar-sunday,
+.calendar-month-grid .calendar-sunday-label,
+.leave-panel .leave-calendar-sunday,
+.leave-weekdays .leave-sunday-label { color: #bd3c42; }
+.calendar-month-grid .calendar-day-today,
+.leave-panel .leave-calendar-today { justify-content: center; background: #285548; color: #fff; }
+.calendar-month-grid .calendar-day-outside,
+.leave-panel .leave-calendar-outside { background: #f8f7f2; }
+.calendar-month-grid .calendar-event-pill,
+.calendar-month-grid .calendar-holiday-pill,
+.leave-panel .leave-event-chip,
+.leave-panel .leave-holiday-chip { margin-top: 5px; border-radius: 5px; font-size: 10px; line-height: 1.35; }
+.calendar-month-grid .calendar-event-pill { overflow: hidden; padding: 4px 6px; text-overflow: ellipsis; }
+.calendar-month-grid .calendar-holiday-pill { background: #fff0d6; color: #875d20; }
+.leave-panel .leave-event-chip,.leave-panel .leave-holiday-chip { padding: 4px 6px; }
+.calendar-month-grid .calendar-weekdays > div,
+.leave-weekdays > div { padding-top: 10px; padding-bottom: 10px; }
+html[data-theme="dark"] .calendar-month-grid .calendar-weekdays,
+html[data-theme="dark"] .leave-weekdays { background: #171717 !important; border-color: #2c2c2c !important; }
+html[data-theme="dark"] .calendar-card > div:first-child,
+html[data-theme="dark"] .leave-panel > div:first-child { background: #151515 !important; }
+html[data-theme="dark"] .calendar-month-grid .calendar-day-cell,
+html[data-theme="dark"] .leave-panel .leave-calendar-cell { border-color: #292929 !important; background-color: #101010 !important; }
+html[data-theme="dark"] .calendar-month-grid .calendar-day-outside,
+html[data-theme="dark"] .leave-panel .leave-calendar-outside { background: #0b0b0b !important; }
+html[data-theme="dark"] .calendar-month-grid .calendar-sunday,
+html[data-theme="dark"] .calendar-month-grid .calendar-sunday-label,
+html[data-theme="dark"] .leave-panel .leave-calendar-sunday,
+html[data-theme="dark"] .leave-weekdays .leave-sunday-label { color: #e4777d !important; }
+html[data-theme="dark"] .calendar-month-grid .calendar-day-number:not(.calendar-day-today) { color: #e7e7e7; }
+html[data-theme="dark"] .calendar-month-grid .calendar-day-number.calendar-sunday { color: #e4777d; }
+html[data-theme="dark"] .calendar-month-grid .calendar-day-today,
+html[data-theme="dark"] .leave-panel .leave-calendar-today { background: #a83940 !important; color: #fff !important; }
+html[data-theme="dark"] .calendar-month-grid .calendar-holiday-pill,
+html[data-theme="dark"] .leave-panel .leave-holiday-chip { background: #332719 !important; color: #f0cc8d !important; }
+html[data-theme="dark"] .calendar-month-grid .calendar-event-pill.bg-teal-100,
+html[data-theme="dark"] .leave-panel .leave-event-chip.bg-teal-100 { background: #18372c !important; color: #a6dfc0 !important; }
+html[data-theme="dark"] .calendar-month-grid .calendar-event-pill.bg-blue-100,
+html[data-theme="dark"] .leave-panel .leave-event-chip.bg-blue-100 { background: #1d2d44 !important; color: #b4d3ff !important; }
+html[data-theme="dark"] .calendar-month-grid .calendar-event-pill.bg-violet-100,
+html[data-theme="dark"] .leave-panel .leave-event-chip.bg-violet-100 { background: #302443 !important; color: #d6c1ff !important; }
+html[data-theme="dark"] .calendar-month-grid .calendar-event-pill.bg-amber-100,
+html[data-theme="dark"] .leave-panel .leave-event-chip.bg-amber-100 { background: #392c18 !important; color: #f1cf91 !important; }
+html[data-theme="dark"] .calendar-month-grid .calendar-event-pill.bg-rose-100,
+html[data-theme="dark"] .leave-panel .leave-event-chip.bg-rose-100 { background: #3a2024 !important; color: #f1b0b6 !important; }
+html[data-theme="dark"] .calendar-month-grid .calendar-event-pill.bg-emerald-100,
+html[data-theme="dark"] .leave-panel .leave-event-chip.bg-emerald-100 { background: #18372c !important; color: #a6dfc0 !important; }
+
+.app-toast-stack { position: fixed; z-index: 120; right: max(18px, env(safe-area-inset-right)); bottom: max(18px, env(safe-area-inset-bottom)); display: flex; width: min(420px, calc(100vw - 36px)); flex-direction: column; gap: 9px; pointer-events: none; }
+.app-toast { display: flex; min-height: 54px; align-items: center; gap: 11px; border: 1px solid #dce6df; border-radius: 14px; background: #fff; padding: 12px 13px; color: #25362d; box-shadow: 0 14px 38px rgb(12 24 18 / 18%); font-size: 13px; line-height: 1.45; pointer-events: auto; animation: app-toast-in .2s ease-out; }
+.app-toast-success > svg:first-child { color: #278057; }
+.app-toast-error { border-color: #f0d0d2; color: #772f34; }
+.app-toast-error > svg:first-child { color: #bd3c42; }
+.app-toast-info > svg:first-child { color: #4f6b8c; }
+.app-toast button { display: grid; width: 28px; height: 28px; flex: 0 0 auto; place-items: center; border-radius: 8px; color: #748078; }
+.app-toast button:hover { background: #f0f2ef; }
+@keyframes app-toast-in { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .app-toast { animation: none; } }
+
+/* Normalize neutral and semantic utility surfaces across every feature in dark mode. */
+html[data-theme="dark"] .app-root [class*="bg-slate-50"],
+html[data-theme="dark"] .app-root [class*="bg-slate-100"],
+html[data-theme="dark"] .app-root [class*="bg-[#f3f7f4"],
+html[data-theme="dark"] .app-root [class*="bg-[#f0f2ee"] { background-color: #171717 !important; }
+html[data-theme="dark"] .app-root [class*="bg-teal-50"],
+html[data-theme="dark"] .app-root [class*="bg-teal-100"],
+html[data-theme="dark"] .app-root [class*="bg-emerald-50"],
+html[data-theme="dark"] .app-root [class*="bg-emerald-100"] { background-color: #173027 !important; }
+html[data-theme="dark"] .app-root [class*="bg-amber-50"],
+html[data-theme="dark"] .app-root [class*="bg-amber-100"] { background-color: #332817 !important; }
+html[data-theme="dark"] .app-root [class*="bg-rose-50"],
+html[data-theme="dark"] .app-root [class*="bg-rose-100"] { background-color: #351d21 !important; }
+html[data-theme="dark"] .app-root [class*="bg-blue-50"],
+html[data-theme="dark"] .app-root [class*="bg-blue-100"] { background-color: #1d2a3c !important; }
+html[data-theme="dark"] .app-root [class*="bg-violet-50"],
+html[data-theme="dark"] .app-root [class*="bg-violet-100"] { background-color: #2b2139 !important; }
+html[data-theme="dark"] .app-root [class*="bg-indigo-50"] { background-color: #20243a !important; }
+html[data-theme="dark"] .app-root [class*="text-emerald-950"],
+html[data-theme="dark"] .app-root [class*="text-emerald-900"] { color: #d5e0d9 !important; }
+html[data-theme="dark"] .app-root [class*="text-teal-900"] { color: #a9d7bf !important; }
+html[data-theme="dark"] .app-root [class*="text-teal-800"],
+html[data-theme="dark"] .app-root [class*="text-emerald-800"] { color: #b4dfc8 !important; }
+html[data-theme="dark"] .app-root [class*="text-amber-950"],
+html[data-theme="dark"] .app-root [class*="text-amber-900"],
+html[data-theme="dark"] .app-root [class*="text-amber-800"] { color: #f0d194 !important; }
+html[data-theme="dark"] .app-root [class*="text-rose-950"],
+html[data-theme="dark"] .app-root [class*="text-rose-900"],
+html[data-theme="dark"] .app-root [class*="text-rose-800"],
+html[data-theme="dark"] .app-root [class*="text-rose-700"] { color: #f0b2b6 !important; }
+html[data-theme="dark"] .app-root [class*="text-blue-900"],
+html[data-theme="dark"] .app-root [class*="text-blue-800"],
+html[data-theme="dark"] .app-root [class*="text-blue-700"] { color: #b7d3fb !important; }
+html[data-theme="dark"] .app-root [class*="text-violet-900"],
+html[data-theme="dark"] .app-root [class*="text-violet-800"],
+html[data-theme="dark"] .app-root [class*="text-violet-700"] { color: #d4c1f7 !important; }
+html[data-theme="dark"] .app-root [class*="text-indigo-900"],
+html[data-theme="dark"] .app-root [class*="text-indigo-800"],
+html[data-theme="dark"] .app-root [class*="text-indigo-700"] { color: #c1c9f4 !important; }
+html[data-theme="dark"] .app-root .calendar-image-dialog [class*="bg-[#f2f3f1"] { background: #0b0b0b !important; }
+html[data-theme="dark"] .app-root .calendar-upload-zone { border-color: #484848 !important; background: #171717 !important; color: #e8e8e8 !important; }
+html[data-theme="dark"] .app-root .calendar-upload-zone:hover:not(:disabled) { border-color: #686868 !important; background: #202020 !important; }
+html[data-theme="dark"] .app-root .calendar-page .calendar-card .bg-emerald-50 > span:first-child { color: #e1eee6 !important; }
+html[data-theme="dark"] .app-root .calendar-page .calendar-card .bg-emerald-50 > span:nth-child(2) { color: #aab6ae !important; }
+html[data-theme="dark"] .app-root .recharts-cartesian-grid line { stroke: #303030 !important; }
+html[data-theme="dark"] .app-root .recharts-text { fill: #aaa !important; }
+html[data-theme="dark"] .app-root .recharts-default-tooltip { border-color: #333 !important; background: #161616 !important; color: #eee !important; }
+html[data-theme="dark"] .app-toast { border-color: #303030; background: #151515; color: #eee; box-shadow: 0 16px 45px rgb(0 0 0 / 45%); }
+html[data-theme="dark"] .app-toast-success { border-left: 3px solid #53a779; }
+html[data-theme="dark"] .app-toast-error { border-color: #573035; border-left: 3px solid #c84b54; color: #f2c1c4; }
+html[data-theme="dark"] .app-toast-info { border-left: 3px solid #7896bd; }
+html[data-theme="dark"] .app-toast button:hover { background: #252525; }
+
+/* Centered primary navigation with clear route state and a compact mobile rail. */
+.app-header-inner { display: grid; min-height: 76px; grid-template-columns: minmax(170px,1fr) auto minmax(230px,1fr); align-items: center; gap: 22px; }
+.app-brand { justify-self: start; text-decoration: none; }
+.app-primary-nav { display: flex; max-width: 100%; align-items: center; justify-self: center; gap: 3px; overflow-x: auto; border: 1px solid #e3e7e3; border-radius: 17px; background: rgb(255 255 255 / 82%); padding: 5px; box-shadow: 0 3px 12px rgb(20 40 30 / 5%), inset 0 1px 0 rgb(255 255 255 / 90%); scrollbar-width: none; }
+.app-primary-nav::-webkit-scrollbar { display: none; }
+.app-nav-link { position: relative; display: inline-flex; min-height: 42px; flex: 0 0 auto; align-items: center; justify-content: center; gap: 8px; border-radius: 12px; padding: 0 13px; color: #6c7770; font-size: 13px; font-weight: 600; text-decoration: none; transition: color .16s ease,background .16s ease,box-shadow .16s ease,transform .16s ease; }
+.app-nav-link:hover { background: #f3f5f2; color: #263b31; }
+.app-nav-link.is-active { background: #173f34; color: #fff; box-shadow: 0 3px 8px rgb(20 63 50 / 16%); }
+.app-nav-link.is-active:hover { background: #205243; color: #fff; }
+.app-header-actions { display: flex; min-width: 0; align-items: center; justify-self: end; gap: 8px; }
+.app-user-email { max-width: 170px; overflow: hidden; margin-right: 3px; color: #7b847e; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.app-header-icon { display: grid; width: 38px; height: 38px; flex: 0 0 auto; place-items: center; border: 1px solid #e2e7e3; border-radius: 12px; background: rgb(255 255 255 / 74%); color: #67736b; transition: background .16s ease,color .16s ease,border-color .16s ease,transform .16s ease; }
+.app-header-icon:hover { transform: translateY(-1px); border-color: #cbd8d0; background: #fff; color: #254c3c; }
+.app-connectivity { border-top: 1px solid rgb(31 60 45 / 5%); }
+html[data-theme="dark"] .app-header-inner { color: #eee; }
+html[data-theme="dark"] .app-primary-nav { border-color: #303030; background: #121212 !important; box-shadow: 0 4px 16px rgb(0 0 0 / 26%), inset 0 1px 0 rgb(255 255 255 / 3%); }
+html[data-theme="dark"] .app-root .app-nav-link { color: #aaa !important; }
+html[data-theme="dark"] .app-root .app-nav-link:hover { background: #202020 !important; color: #fff !important; }
+html[data-theme="dark"] .app-root .app-nav-link.is-active { border: 1px solid #373737; background: #252020 !important; color: #f5eeee !important; box-shadow: inset 0 0 0 1px rgb(180 61 68 / 16%),0 3px 9px rgb(0 0 0 / 22%); }
+html[data-theme="dark"] .app-root .app-nav-link.is-active svg { color: #d36a70; }
+html[data-theme="dark"] .app-user-email { color: #999; }
+html[data-theme="dark"] .app-header-icon { border-color: #333 !important; background: #131313 !important; color: #bbb !important; }
+html[data-theme="dark"] .app-header-icon:hover { border-color: #494949 !important; background: #222 !important; color: #fff !important; }
+html[data-theme="dark"] .app-connectivity { border-color: #282828; }
+.app-toast-stack { top: max(108px,calc(env(safe-area-inset-top) + 100px)); bottom: auto; }
+@media (max-width: 1023px) {
+  .app-header-inner { grid-template-columns: minmax(0,1fr) auto; grid-template-rows: 64px auto; gap: 0 14px; padding-bottom: 8px; }
+  .app-brand { grid-column: 1; grid-row: 1; }
+  .app-header-actions { grid-column: 2; grid-row: 1; }
+  .app-primary-nav { grid-column: 1 / -1; grid-row: 2; justify-self: center; }
+  .app-user-email { display: none; }
+}
+@media (max-width: 639px) {
+  .app-header-inner { gap: 0 8px; padding-right: 12px; padding-left: 12px; }
+  .app-primary-nav { width: 100%; justify-content: flex-start; border-radius: 14px; }
+  .app-nav-link { min-height: 38px; gap: 6px; padding: 0 11px; font-size: 12px; }
+  .app-header-actions { gap: 5px; }
+  .app-header-icon { width: 35px; height: 35px; border-radius: 11px; }
+  .app-toast-stack { top: max(144px,calc(env(safe-area-inset-top) + 136px)); right: 12px; width: min(390px,calc(100vw - 24px)); }
+}
