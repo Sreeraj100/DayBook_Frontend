@@ -5,6 +5,7 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { AppDialogsProvider } from './components/AppDialogs';
 import { AppToastProvider } from './components/AppToasts';
+import { PwaUpdateManager } from './components/PwaUpdateManager';
 import './index.css';
 
 const queryClient = new QueryClient({
@@ -16,6 +17,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <QueryClientProvider client={queryClient}>
       <AppDialogsProvider>
         <AppToastProvider>
+          <PwaUpdateManager />
           <BrowserRouter>
             <App />
           </BrowserRouter>

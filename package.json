@@ -1,13 +1,14 @@
 {
   "name": "@sjr/frontend",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "engines": {
     "node": "^22.12.0"
   },
   "scripts": {
     "dev": "vite",
+    "prebuild": "node scripts/generate-version.mjs",
     "build": "tsc -b && vite build",
     "lint": "eslint src --max-warnings=0",
     "test": "tsx --test src/features/diary/autosave.test.ts src/features/diary/date.test.ts src/features/calendar/dates.test.ts src/lib/offline.test.ts",

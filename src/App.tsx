@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { BookOpen, CalendarDays, CheckCheck, Download, ListTodo, LoaderCircle, LogOut, Moon, RefreshCw, Sun, Umbrella, Wallet, Wifi, WifiOff, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
-import { NavLink, Route, Routes } from 'react-router-dom';
+import { BookOpen, CalendarDays, CheckCheck, Download, ListTodo, LoaderCircle, LogOut, Moon, RefreshCw, Sun, Umbrella, Wallet, WifiOff, X } from 'lucide-react';
+import { useEffect, useRef, useState, type TouchEvent } from 'react';
+import { NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { AuthScreen } from './features/auth/AuthScreen';
 import { TodoPage } from './features/todos/TodoPage';
 import { DiaryPage } from './features/diary/DiaryPage';
@@ -14,6 +14,9 @@ import { listTodoOperations } from './lib/diaryDrafts';
 
 export default function App() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     try { return localStorage.getItem('daybook-theme') === 'dark' ? 'dark' : 'light'; } catch { return 'light'; }
   });
@@ -65,26 +68,67 @@ export default function App() {
   if (auth.isPending) return <div className="grid min-h-screen place-items-center bg-[#f6f7f4]"><LoaderCircle className="animate-spin text-teal-700" /></div>;
   if (auth.isError && !getOfflineIdentity()) return <div className="grid min-h-screen place-items-center bg-[#f6f7f4] p-6 text-center text-slate-600"><div><div className="mx-auto grid size-12 place-items-center rounded-full bg-amber-100 text-amber-800"><WifiOff size={20} /></div><h1 className="mt-4 text-xl font-semibold text-slate-900">{online ? 'Daybook could not connect' : 'You’re offline'}</h1><p className="mx-auto mt-2 max-w-md text-sm">{online ? 'Check that the API is running and try again.' : 'This device has no saved sign-in identity yet. Reconnect to sign in. Diary drafts and queued task actions saved on this device will remain available after you sign in again.'}</p><button className="mt-4 rounded-xl bg-[#163c36] px-4 py-2 text-sm text-white" onClick={() => window.location.reload()}>Try again</button><a className="ml-4 text-sm font-medium text-teal-800 underline" href="/offline.html">Offline help</a></div></div>;
   const user = auth.data ?? (!online ? getOfflineIdentity() : null);
-  return <Routes><Route path="*" element={user ? <div className="app-root min-h-screen bg-[#f6f7f4]"><Header theme={theme} onToggleTheme={() => setTheme((current) => current === 'light' ? 'dark' : 'light')} email={user.email} offline={!online} queued={queued} onRetry={() => { if (!loggingOut.current) void retryFailedTodoOperations(user.id).then(() => queryClient.invalidateQueries({ queryKey: ['todos'] })).catch(() => undefined); }} onLogout={async () => {
+  const handleTouchStart = (event: TouchEvent<HTMLDivElement>) => {
+    const touch = event.touches[0];
+    if (touch) touchStart.current = { x: touch.clientX, y: touch.clientY };
+  };
+  const handleTouchEnd = (event: TouchEvent<HTMLDivElement>) => {
+    const start = touchStart.current;
+    touchStart.current = null;
+    const touch = event.changedTouches[0];
+    if (!start || !touch) return;
+    const dx = touch.clientX - start.x;
+    const dy = touch.clientY - start.y;
+    if (Math.abs(dx) < 85 || Math.abs(dx) < Math.abs(dy) * 1.35) return;
+    const target = event.target instanceof Element ? event.target : null;
+    if (target?.closest('input,textarea,select,button,a,[role="slider"],[data-no-page-swipe]')) return;
+    const scrollable = target?.closest<HTMLElement>('[data-horizontal-scroll],.overflow-x-auto,.overflow-x-scroll');
+    if (scrollable && scrollable.scrollWidth > scrollable.clientWidth + 2) return;
+    const routes = ['/', '/calendar', '/leaves', '/diary', '/finance'];
+    const activeIndex = Math.max(0, routes.indexOf(location.pathname));
+    const nextIndex = dx < 0 ? Math.min(routes.length - 1, activeIndex + 1) : Math.max(0, activeIndex - 1);
+    if (activeIndex !== nextIndex) navigate(routes[nextIndex]!);
+  };
+  return <Routes><Route path="*" element={user ? <div className="app-root app-root-authenticated min-h-screen bg-[#f6f7f4]"><Header theme={theme} onToggleTheme={() => setTheme((current) => current === 'light' ? 'dark' : 'light')} email={user.email} offline={!online} queued={queued} onRetry={() => { if (!loggingOut.current) void retryFailedTodoOperations(user.id).then(() => queryClient.invalidateQueries({ queryKey: ['todos'] })).catch(() => undefined); }} onLogout={async () => {
       loggingOut.current = true;
       await clearUserOfflineData(user.id);
       setPendingLogout(true);
       queryClient.clear();
       queryClient.setQueryData(['auth', 'me'], null);
       if (navigator.onLine) { try { await api('/auth/logout', { method: 'POST' }); setPendingLogout(false); } catch { setAuthNotice('Signed out on this device. The server session will be revoked when you reconnect.'); } }
-    }} /><Routes><Route path="/diary" element={<DiaryPage userId={user.id} />} /><Route path="/finance" element={<FinancePage />} /><Route path="/calendar" element={<CalendarPage />} /><Route path="/leaves" element={<LeavesPage />} /><Route path="*" element={<TodoPage userId={user.id} />} /></Routes></div> : <div className="app-root min-h-screen"><Header theme={theme} onToggleTheme={() => setTheme((current) => current === 'light' ? 'dark' : 'light')} email="" offline={!online} queued={null} onRetry={() => undefined} onLogout={() => undefined} /><AuthScreen onAuthenticated={() => { loggingOut.current = false; setPendingLogout(false); return queryClient.invalidateQueries({ queryKey: ['auth', 'me'] }); }} notice={authNotice} setNotice={setAuthNotice} /></div>} /></Routes>;
+    }} /><div className="app-page-content" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}><Routes><Route path="/diary" element={<DiaryPage userId={user.id} />} /><Route path="/finance" element={<FinancePage />} /><Route path="/calendar" element={<CalendarPage />} /><Route path="/leaves" element={<LeavesPage />} /><Route path="*" element={<TodoPage userId={user.id} />} /></Routes></div></div> : <div className="app-root min-h-screen"><AuthScreen onAuthenticated={() => { loggingOut.current = false; setPendingLogout(false); return queryClient.invalidateQueries({ queryKey: ['auth', 'me'] }); }} notice={authNotice} setNotice={setAuthNotice} /></div>} /></Routes>;
 }
 
 function Header({ email, offline, queued, onRetry, onLogout, theme, onToggleTheme }: { email: string; offline: boolean; queued: { pending: number; failed: number; conflict: number } | null; onRetry: () => void; onLogout: () => void; theme: 'light' | 'dark'; onToggleTheme: () => void }) {
+  const [hidden, setHidden] = useState(false);
+  const lastScrollY = useRef(0);
   const [installEvent, setInstallEvent] = useState<{ prompt: () => Promise<void>; userChoice?: Promise<{ outcome: string }> } | null>(null);
   const [installHelp, setInstallHelp] = useState(false);
+  const [installed, setInstalled] = useState(() => window.matchMedia('(display-mode: standalone)').matches || Boolean((navigator as Navigator & { standalone?: boolean }).standalone));
   useEffect(() => {
     const listener = (event: Event) => { event.preventDefault(); setInstallEvent(event as Event & { prompt: () => Promise<void>; userChoice?: Promise<{ outcome: string }> }); };
+    const markInstalled = () => { setInstalled(true); setInstallEvent(null); setInstallHelp(false); };
+    const checkInstalled = () => setInstalled(window.matchMedia('(display-mode: standalone)').matches || Boolean((navigator as Navigator & { standalone?: boolean }).standalone));
     window.addEventListener('beforeinstallprompt', listener);
-    return () => window.removeEventListener('beforeinstallprompt', listener);
+    window.addEventListener('appinstalled', markInstalled);
+    document.addEventListener('visibilitychange', checkInstalled);
+    return () => { window.removeEventListener('beforeinstallprompt', listener); window.removeEventListener('appinstalled', markInstalled); document.removeEventListener('visibilitychange', checkInstalled); };
+  }, []);
+  useEffect(() => {
+    const handleScroll = () => {
+      const current = window.scrollY;
+      const delta = current - lastScrollY.current;
+      if (current < 48) setHidden(false);
+      else if (delta > 7) setHidden(true);
+      else if (delta < -7) setHidden(false);
+      lastScrollY.current = current;
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
   async function install() { if (!installEvent) { setInstallHelp(true); return; } await installEvent.prompt(); await installEvent.userChoice; setInstallEvent(null); }
-  return <header className="app-header sticky top-0 z-20 border-b border-[#e8ebe5] bg-[#fbfcfa]/95 backdrop-blur"><div className="app-header-inner mx-auto max-w-[1440px] px-4 sm:px-8">
+  const hasQueued = Boolean(queued && queued.pending + queued.failed + queued.conflict > 0);
+  return <header className={`app-header sticky top-0 z-20 border-b border-[#e8ebe5] bg-[#fbfcfa]/95 backdrop-blur ${hidden ? 'app-header-hidden' : ''}`}><div className="app-header-inner mx-auto max-w-[1440px] px-4 sm:px-8">
     <a className="app-brand flex items-center gap-3" href="/" aria-label="Daybook home"><span className="grid size-9 place-items-center rounded-xl bg-[#163c36] text-white"><CheckCheck size={18} /></span><span className="font-semibold tracking-tight text-slate-900">daybook<span className="text-teal-700">.</span></span></a>
     {email && <nav className="app-primary-nav" aria-label="Main navigation">
       <NavLink end to="/" className={({ isActive }) => `app-nav-link ${isActive ? 'is-active' : ''}`}><ListTodo size={16} aria-hidden="true" /><span>Tasks</span></NavLink>
@@ -93,6 +137,6 @@ function Header({ email, offline, queued, onRetry, onLogout, theme, onToggleThem
       <NavLink to="/diary" className={({ isActive }) => `app-nav-link ${isActive ? 'is-active' : ''}`}><BookOpen size={16} aria-hidden="true" /><span>Diary</span></NavLink>
       <NavLink to="/finance" className={({ isActive }) => `app-nav-link ${isActive ? 'is-active' : ''}`}><Wallet size={16} aria-hidden="true" /><span>Money</span></NavLink>
     </nav>}
-    <div className="app-header-actions">{email && <><span className="app-user-email">{email}</span><button className="app-header-icon" title="Sign out" aria-label="Sign out" onClick={onLogout}><LogOut size={16} /></button></>}<button onClick={onToggleTheme} className="app-header-icon" title={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`} aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}>{theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}</button><button onClick={() => void install()} className="app-header-icon" title="Install Daybook" aria-label="Install Daybook"><Download size={16} /></button></div>
-  </div>{email && <div className={`app-connectivity flex min-h-8 items-center justify-between gap-2 px-4 py-1 text-xs sm:px-8 ${offline ? 'bg-amber-50 text-amber-900' : 'bg-[#edf5ef] text-[#315b4a]'}`}><span className="inline-flex items-center gap-1.5">{offline ? <WifiOff size={13} /> : <Wifi size={13} />}{offline ? 'Offline · diary drafts and quick-add/complete task actions wait here. Other data needs internet.' : 'Online · changes can sync with Daybook.'}</span>{queued && (queued.pending + queued.failed + queued.conflict > 0) && <button onClick={onRetry} disabled={offline} className="inline-flex items-center gap-1.5 font-medium disabled:opacity-50"><RefreshCw size={12} />{queued.pending} pending{queued.failed ? ` · ${queued.failed} failed` : ''}{queued.conflict ? ` · ${queued.conflict} conflict` : ''} · Retry</button>}</div>}{installHelp && <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/40 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setInstallHelp(false); }}><section className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="install-title"><div className="flex items-start justify-between"><div><h2 id="install-title" className="text-xl font-semibold text-slate-900">Install Daybook</h2><p className="mt-2 text-sm text-slate-600">Installation options depend on your browser.</p></div><button onClick={() => setInstallHelp(false)} aria-label="Close" className="rounded-lg p-1 text-slate-500"><X size={18} /></button></div><ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-slate-600"><li>Chrome or Edge: use the install icon in the address bar or this button.</li><li>iPhone/iPad Safari: Share, then Add to Home Screen.</li><li>Other browsers may offer a different install menu or no install support.</li></ul><p className="mt-4 rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-900">Offline mode is limited: server data, finance, calendar, leaves, sign-in, and AI grammar requests need internet. Only diary drafts and quick-add/complete task actions can wait on this device.</p><button onClick={() => setInstallHelp(false)} className="mt-4 rounded-xl bg-[#163c36] px-4 py-2 text-sm text-white">Got it</button></section></div>}</header>;
+    <div className="app-header-actions">{email && <>{(offline || hasQueued) && <div className={`app-sync-chip ${offline ? 'is-offline' : ''}`} title={offline ? 'Offline. Diary drafts and selected task actions are stored on this device.' : 'Queued changes need attention.'}>{offline ? <WifiOff size={13} /> : <RefreshCw size={13} />}<span>{offline ? `Offline${hasQueued ? ` · ${queued?.pending ?? 0} queued` : ''}` : queued?.failed ? `${queued.failed} failed` : queued?.conflict ? `${queued.conflict} conflicts` : `${queued?.pending ?? 0} pending`}</span>{hasQueued && <button type="button" onClick={onRetry} disabled={offline} aria-label="Retry pending changes">Retry</button>}</div>}<span className="app-user-email">{email}</span><button className="app-header-icon" title="Sign out" aria-label="Sign out" onClick={onLogout}><LogOut size={16} /></button></>}<button onClick={onToggleTheme} className="app-header-icon" title={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`} aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}>{theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}</button>{!installed && <button onClick={() => void install()} className="app-header-icon" title="Install Daybook" aria-label="Install Daybook"><Download size={16} /></button>}</div>
+  </div>{installHelp && <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/40 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setInstallHelp(false); }}><section className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="install-title"><div className="flex items-start justify-between"><div><h2 id="install-title" className="text-xl font-semibold text-slate-900">Install Daybook</h2><p className="mt-2 text-sm text-slate-600">Installation options depend on your browser.</p></div><button onClick={() => setInstallHelp(false)} aria-label="Close" className="rounded-lg p-1 text-slate-500"><X size={18} /></button></div><ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-slate-600"><li>Chrome or Edge: use the install icon in the address bar or this button.</li><li>iPhone/iPad Safari: Share, then Add to Home Screen.</li><li>Other browsers may offer a different install menu or no install support.</li></ul><p className="mt-4 rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-900">Offline mode is limited: server data, finance, calendar, leaves, sign-in, and AI grammar requests need internet. Only diary drafts and quick-add/complete task actions can wait on this device.</p><button onClick={() => setInstallHelp(false)} className="mt-4 rounded-xl bg-[#163c36] px-4 py-2 text-sm text-white">Got it</button></section></div>}</header>;
 }
