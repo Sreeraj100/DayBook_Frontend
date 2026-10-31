@@ -38,5 +38,5 @@ export default defineConfig({
       }
     })
   ],
-  server: { port: 5173, proxy: { '/api': { target: 'http://localhost:4000', changeOrigin: true } } }
+  server: { port: 5173, proxy: { '/api': { target: 'https://daybook-backend-x9yv.onrender.com', changeOrigin: true } } }
 });
